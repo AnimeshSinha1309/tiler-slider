@@ -48,11 +48,13 @@ class GridState:
 
     def move(self, move: Move):
         delta_r, delta_c = move.value
-        for idx, tile in enumerate(self.tiles):
-            while 0 <= tile[0] + delta_r < self.n and 0 <= tile[1] + delta_c < self.m and\
-                    self.grid[tile[0] + delta_r, tile[1] + delta_c]:
-                tile = tile[0] + delta_r, tile[1] + delta_c
-            self.tiles[idx] = tile
+        for _ in range(max(self.n, self.m) + 1):
+            for idx, tile in enumerate(self.tiles):
+                next_r, next_c = tile[0] + delta_r, tile[1] + delta_c
+                if 0 <= next_r < self.n and 0 <= next_c < self.m and \
+                        self.grid[next_r, next_c] and (next_r, next_c) not in self.tiles:
+                    tile = tile[0] + delta_r, tile[1] + delta_c
+                self.tiles[idx] = tile
 
     def __str__(self):
         labels = np.full(shape=self.grid.shape, fill_value='.')

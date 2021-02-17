@@ -21,7 +21,7 @@ class GridRender(GridState):
     def render(self):
         for x in range(self.m):
             for y in range(self.n):
-                rect = pygame.Rect(x * config.BLOCK_SIZE, y * config.BLOCK_SIZE, config.BLOCK_SIZE, config.BLOCK_SIZE)
+                rect = pygame.Rect(y * config.BLOCK_SIZE, x * config.BLOCK_SIZE, config.BLOCK_SIZE, config.BLOCK_SIZE)
                 # assigning colour based on grid value
                 if (x, y) in self.tiles and (x, y) in self.targets:
                     color = config.COLORS["COMBINED"]
@@ -53,12 +53,13 @@ class GridRender(GridState):
         state: GridState
         moves: typing.List[typing.Tuple[int, int]]
         state, moves = super().load(input_file)
-        print(state, "\n")
+
         state: GridRender = GridRender(state.n, state.m, state.grid, state.tiles, state.targets)
         state.render()
+        print(state, "\n")
 
         for move in moves:
-            state.move(move)
             print(state, "\n")
+            state.move(move)
             state.update()
             state.respond()
