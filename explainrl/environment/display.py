@@ -36,6 +36,15 @@ class GridRender(GridState):
                     color = config.COLORS["OBSTACLE"]
                 pygame.draw.rect(self.screen, color, rect, 0, border_radius=0)
 
+        # draw lines
+        for x in range(self.m):
+            pygame.draw.line(self.screen, config.COLORS['LINE'], (
+                x*config.BLOCK_SIZE, 0), (x*config.BLOCK_SIZE, self.n*config.BLOCK_SIZE), config.LINE_WIDTH)
+
+        for y in range(self.n):
+            pygame.draw.line(self.screen, config.COLORS['LINE'], (
+                0, y*config.BLOCK_SIZE), (self.m*config.BLOCK_SIZE, y*config.BLOCK_SIZE), config.LINE_WIDTH)
+
     def update(self, time):
         self.screen.fill(config.COLORS["SCREEN"])
         self.render()
