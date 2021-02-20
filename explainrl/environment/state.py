@@ -33,7 +33,8 @@ class GridState:
         file = open(input_file, 'r')
         # Get the Grid
         n, m = list(map(int, file.readline().strip().split()))
-        grid = np.array([[cell == "." for cell in file.readline().strip()] for _ in range(n)])
+        grid = np.array(
+            [[cell == "." for cell in file.readline().strip()] for _ in range(n)])
         k = int(file.readline().strip())
         tiles, targets = [], []
         for _ in range(k):
@@ -48,13 +49,15 @@ class GridState:
 
     def move(self, move: Move):
         delta_r, delta_c = move.value
-        for _ in range(max(self.n, self.m) + 1):
-            for idx, tile in enumerate(self.tiles):
-                next_r, next_c = tile[0] + delta_r, tile[1] + delta_c
-                if 0 <= next_r < self.n and 0 <= next_c < self.m and \
-                        self.grid[next_r, next_c] and (next_r, next_c) not in self.tiles:
-                    tile = tile[0] + delta_r, tile[1] + delta_c
-                self.tiles[idx] = tile
+        flag = 0
+        for idx, tile in enumerate(self.tiles):
+            next_r, next_c = tile[0] + delta_r, tile[1] + delta_c
+            if 0 <= next_r < self.n and 0 <= next_c < self.m and \
+                    self.grid[next_r, next_c] and (next_r, next_c) not in self.tiles:
+                flag = 1
+                tile = tile[0] + delta_r, tile[1] + delta_c
+            self.tiles[idx] = tile
+        return flag
 
     def __str__(self):
         labels = np.full(shape=self.grid.shape, fill_value='.')

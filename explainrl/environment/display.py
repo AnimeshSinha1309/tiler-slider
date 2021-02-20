@@ -21,7 +21,8 @@ class GridRender(GridState):
     def render(self):
         for x in range(self.m):
             for y in range(self.n):
-                rect = pygame.Rect(y * config.BLOCK_SIZE, x * config.BLOCK_SIZE, config.BLOCK_SIZE, config.BLOCK_SIZE)
+                rect = pygame.Rect(
+                    y * config.BLOCK_SIZE, x * config.BLOCK_SIZE, config.BLOCK_SIZE, config.BLOCK_SIZE)
                 # assigning colour based on grid value
                 if (x, y) in self.tiles and (x, y) in self.targets:
                     color = config.COLORS["COMBINED"]
@@ -35,11 +36,11 @@ class GridRender(GridState):
                     color = config.COLORS["OBSTACLE"]
                 pygame.draw.rect(self.screen, color, rect, 0, border_radius=0)
 
-    def update(self):
+    def update(self, time):
         self.screen.fill(config.COLORS["SCREEN"])
         self.render()
         pygame.display.update()
-        pygame.time.wait(config.WAIT_TIME)
+        pygame.time.wait(time)
 
     @staticmethod
     def respond():
@@ -54,12 +55,18 @@ class GridRender(GridState):
         moves: typing.List[typing.Tuple[int, int]]
         state, moves = super().load(input_file)
 
-        state: GridRender = GridRender(state.n, state.m, state.grid, state.tiles, state.targets)
+        state: GridRender = GridRender(
+            state.n, state.m, state.grid, state.tiles, state.targets)
         state.render()
         print(state, "\n")
 
         for move in moves:
             print(state, "\n")
-            state.move(move)
-            state.update()
+            for _ in range(max(state.n, state.m) + 1):
+                flag = state.move(move)
+                if flag == 0:
+                    # no tiles position changed
+                    pygame.time.wait(config.WAIT_TIME)
+                    break
+                state.update(config.ANIMATION_TIME)
             state.respond()

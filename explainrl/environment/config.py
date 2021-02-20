@@ -9,4 +9,5 @@ COLORS = {
 
 WINDOW_TITLE = 'Tiler-Slider'
 BLOCK_SIZE = 150
-WAIT_TIME = 5000  # wait for this time after each move
+ANIMATION_TIME = 40  # wait time for animation
+WAIT_TIME = 1000  # wait for this time after each move
