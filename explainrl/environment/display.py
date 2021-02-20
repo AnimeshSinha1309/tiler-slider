@@ -28,13 +28,20 @@ class GridRender(GridState):
                     color = config.COLORS["COMBINED"]
                 elif (x, y) in self.tiles:
                     color = config.COLORS["TILE"]
+                    circle_color = config.COLORS["SPACE"]
                 elif (x, y) in self.targets:
-                    color = config.COLORS["TARGET"]
+                    color = config.COLORS["SPACE"]
+                    circle_color = config.COLORS["TARGET"]
                 elif self.grid[x, y]:
                     color = config.COLORS["SPACE"]
                 else:
                     color = config.COLORS["OBSTACLE"]
+
                 pygame.draw.rect(self.screen, color, rect, 0, border_radius=0)
+
+                if ((x, y) in self.tiles) ^ ((x, y) in self.targets):
+                    pygame.draw.circle(self.screen, circle_color, (
+                        y*config.BLOCK_SIZE + config.BLOCK_SIZE/2, x*config.BLOCK_SIZE + config.BLOCK_SIZE/2), radius=config.RADIUS)
 
         # draw lines
         for x in range(self.m):
