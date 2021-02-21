@@ -10,7 +10,7 @@ COLORS = {
 
 WINDOW_TITLE = 'Tiler-Slider'
 BLOCK_SIZE = 150
-RADIUS = BLOCK_SIZE//5  # radius of circle drawn inside rectangles
+RADIUS = BLOCK_SIZE // 5  # radius of circle drawn inside rectangles
 ANIMATION_TIME = 50  # wait time for animation
 WAIT_TIME = 1000  # wait for this time after each move
-LINE_WIDTH = 2  # horizontal & vertical lines drawn on baord
+LINE_WIDTH = 2  # horizontal & vertical lines drawn on board

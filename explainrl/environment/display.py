@@ -23,6 +23,7 @@ class GridRender(GridState):
             for y in range(self.n):
                 rect = pygame.Rect(
                     y * config.BLOCK_SIZE, x * config.BLOCK_SIZE, config.BLOCK_SIZE, config.BLOCK_SIZE)
+                circle_color = config.COLORS["SPACE"]
                 # assigning colour based on grid value
                 if (x, y) in self.tiles and (x, y) in self.targets:
                     color = config.COLORS["COMBINED"]
@@ -41,7 +42,8 @@ class GridRender(GridState):
 
                 if ((x, y) in self.tiles) ^ ((x, y) in self.targets):
                     pygame.draw.circle(self.screen, circle_color, (
-                        y*config.BLOCK_SIZE + config.BLOCK_SIZE/2, x*config.BLOCK_SIZE + config.BLOCK_SIZE/2), radius=config.RADIUS)
+                        y*config.BLOCK_SIZE + config.BLOCK_SIZE/2, x*config.BLOCK_SIZE + config.BLOCK_SIZE/2),
+                                       radius=config.RADIUS)
 
         # draw lines
         for x in range(self.m):
