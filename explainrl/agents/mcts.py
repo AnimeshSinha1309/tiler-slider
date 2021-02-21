@@ -45,7 +45,7 @@ class MCTSAgent:
             :param c: Exploration Exploitation tradeoff constant
             :return: int, the index of the chosen action
             """
-            _value, priors = model()
+            _value, priors = model(self.state)
             n_visits = torch.sum(self.n_value).item()
             uct = self.q_value + (priors * c * np.sqrt(n_visits + 1) / (self.n_value + 1))
             best_val = torch.max(uct)
@@ -71,7 +71,7 @@ class MCTSAgent:
             :param model: The neural network used to make this approximation
             :return: float, value function of the current state
             """
-            value, _policy = model(self)
+            value, _policy = model(self.state)
             return value
 
         def backup(self, future_reward, gamma=0.95):
@@ -101,7 +101,6 @@ class MCTSAgent:
         :param state: State to start searching from
         :param model: Function approximator for both value and policy
         """
-        self.state = state
         self.model = model
         self.root = MCTSAgent.MCTSState(state, self.model)
 
@@ -133,3 +132,8 @@ class MCTSAgent:
         self.search(1000)
         action_idx = self.root.select(self.model)
         return Move(action_idx)
+
+    def update(self, action):
+        action_idx = action.value
+        self.root = self.root.child_states[action_idx]
+        return True

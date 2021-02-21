@@ -91,6 +91,10 @@ class GridState:
     def done(self) -> bool:
         return self.tiles == self.targets
 
+    @property
+    def shape(self) -> ty.Tuple[int, int]:
+        return self.grid.shape
+
     def __str__(self) -> str:
         labels = np.full(shape=self.grid.shape, fill_value='.')
         for x, row in enumerate(self.grid):

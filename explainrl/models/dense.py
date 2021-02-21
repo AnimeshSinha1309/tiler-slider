@@ -11,14 +11,16 @@ class FeedForwardEvaluator(torch.nn.Module):
         self.linear_2 = torch.nn.Linear(100, 50)
         self.value_linear = torch.nn.Linear(50, 1)
         self.policy_linear = torch.nn.Linear(50, 4)
+        self.activation = torch.nn.ELU()
+        self.policy_activation = torch.nn.Softmax(dim=-1)
 
     def forward(self, state):
         x = self.representation(state)
         x = x.view(-1)
-        x = torch.nn.ELU(self.linear_1(x))
-        x = torch.nn.ELU(self.linear_2(x))
+        x = self.activation(self.linear_1(x))
+        x = self.activation(self.linear_2(x))
         value = self.value_linear(x)
-        policy = torch.nn.Softmax(self.policy_linear(x))
+        policy = self.policy_activation(self.policy_linear(x))
         return value, policy
 
     @staticmethod
