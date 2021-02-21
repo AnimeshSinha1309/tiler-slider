@@ -14,6 +14,19 @@ class FeedForwardEvaluator(torch.nn.Module):
         self.activation = torch.nn.ELU()
         self.policy_activation = torch.nn.Softmax(dim=-1)
 
+        self.optimizer = torch.optim.Adam(self.parameters())
+
+    @staticmethod
+    def _loss_p(predicted, target):
+        loss = torch.sum(-target * ((1e-8 + predicted).log()))
+        return loss
+
+    @staticmethod
+    def _loss_v(predicted, target):
+        criterion = torch.nn.MSELoss()
+        loss = criterion(predicted, target)
+        return loss
+
     def forward(self, state):
         x = self.representation(state)
         x = x.view(-1)
@@ -22,6 +35,13 @@ class FeedForwardEvaluator(torch.nn.Module):
         value = self.value_linear(x)
         policy = self.policy_activation(self.policy_linear(x))
         return value, policy
+
+    def fit(self, state, v, p):
+        v = v.reshape(1)
+        pred_v, pred_p = self(state)
+        loss = self._loss_v(pred_v, v) + self._loss_p(pred_p, p)
+        loss.backward()
+        self.optimizer.step()
 
     @staticmethod
     def representation(state: GridState):

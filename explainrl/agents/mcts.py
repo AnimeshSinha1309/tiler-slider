@@ -46,6 +46,7 @@ class MCTSAgent:
             :return: int, the index of the chosen action
             """
             _value, priors = model(self.state)
+            priors = priors.detach().numpy()
             n_visits = torch.sum(self.n_value).item()
             uct = self.q_value + (priors * c * np.sqrt(n_visits + 1) / (self.n_value + 1))
             best_val = torch.max(uct)
@@ -72,7 +73,7 @@ class MCTSAgent:
             :return: float, value function of the current state
             """
             value, _policy = model(self.state)
-            return value
+            return value.item()
 
         def backup(self, future_reward, gamma=0.95):
             """
@@ -103,6 +104,12 @@ class MCTSAgent:
         """
         self.model = model
         self.root = MCTSAgent.MCTSState(state, self.model)
+        self.memory = []
+
+    @staticmethod
+    def _stable_normalizer(x, temp=1.5):
+        x = (x / torch.max(x)) ** temp
+        return torch.abs(x / torch.sum(x))
 
     def search(self, n_mcts):
         """
@@ -111,25 +118,36 @@ class MCTSAgent:
         :param n_mcts: number of times to run for
         :return: None
         """
-        for _ in range(n_mcts):
-            mcts_state: MCTSAgent.MCTSState = self.root  # reset to root for new trace
-            while True:
-                action_index: int = mcts_state.select(self.model)
-                if mcts_state.child_states[action_index] is not None:
-                    mcts_state = mcts_state.child_states[action_index]
-                    continue
-                else:
-                    mcts_state = mcts_state.expand(Move(action_index))
-                    break
-            total_reward = mcts_state.rollout(self.model)
-            mcts_state.backup(total_reward)
+        with torch.no_grad():
+            self.model.eval()
+            for _ in range(n_mcts):
+                mcts_state: MCTSAgent.MCTSState = self.root  # reset to root for new trace
+                while True:
+                    action_index: int = mcts_state.select(self.model)
+                    if mcts_state.child_states[action_index] is not None:
+                        mcts_state = mcts_state.child_states[action_index]
+                        continue
+                    else:
+                        mcts_state = mcts_state.expand(Move(action_index))
+                        break
+                total_reward = mcts_state.rollout(self.model)
+                mcts_state.backup(total_reward)
+            self.memory.append((
+                self.root.state,
+                torch.sum((self.root.n_value / torch.sum(self.root.n_value)) * self.root.q_value),
+                self._stable_normalizer(self.root.n_value)))
+
+    def train(self):
+        self.model.train()
+        for state, v, p in self.memory:
+            self.model.fit(state, v, p)
 
     def act(self):
         """
         Get the best action
         :return: Move, the best action in current state
         """
-        self.search(1000)
+        self.search(100)
         action_idx = self.root.select(self.model)
         return Move(action_idx)
 

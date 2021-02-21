@@ -33,6 +33,17 @@ class Move(Enum):
         elif direction == 'R':
             return cls.RIGHT
 
+    @classmethod
+    def to_char(cls, direction):
+        if direction == cls.UP:
+            return 'U'
+        elif direction == cls.DOWN:
+            return 'D'
+        elif direction == cls.LEFT:
+            return 'L'
+        elif direction == cls.RIGHT:
+            return 'R'
+
 
 class GridState:
 
@@ -68,18 +79,19 @@ class GridState:
     def move(self, move: Move) -> bool:
         delta_r, delta_c = Move.to_tuple(move)
         flag = False
-        for idx, tile in enumerate(self.tiles):
-            next_r, next_c = tile[0] + delta_r, tile[1] + delta_c
-            if 0 <= next_r < self.n and 0 <= next_c < self.m and \
-                    self.grid[next_r, next_c] and (next_r, next_c) not in self.tiles:
-                flag = True
-                tile = tile[0] + delta_r, tile[1] + delta_c
-            self.tiles[idx] = tile
+        for _ in range(max(self.grid.shape)):
+            for idx, tile in enumerate(self.tiles):
+                next_r, next_c = tile[0] + delta_r, tile[1] + delta_c
+                if 0 <= next_r < self.n and 0 <= next_c < self.m and \
+                        self.grid[next_r, next_c] and (next_r, next_c) not in self.tiles:
+                    flag = True
+                    tile = tile[0] + delta_r, tile[1] + delta_c
+                self.tiles[idx] = tile
         return flag
 
     def available_actions(self) -> ty.Dict[Move, bool]:
         actions = {move: False for move in [Move.UP, Move.DOWN, Move.LEFT, Move.RIGHT]}
-        for action in actions:
+        for action in actions.keys():
             for tile in self.tiles:
                 next_r, next_c = tile + actions
                 if 0 <= next_r < self.n and 0 <= next_c < self.m and \
