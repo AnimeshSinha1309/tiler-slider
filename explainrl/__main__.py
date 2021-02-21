@@ -14,7 +14,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # GridRender.load(args.input_file)
-    model = FeedForwardEvaluator((3, 3)) # state.shape
+    model = FeedForwardEvaluator((6, 6))  # state.shape
 
     for _trial in range(10):
         state, moves = GridState.load(args.input_file)

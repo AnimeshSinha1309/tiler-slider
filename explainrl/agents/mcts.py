@@ -142,12 +142,12 @@ class MCTSAgent:
         for state, v, p in self.memory:
             self.model.fit(state, v, p)
 
-    def act(self):
+    def act(self, search_count=1000):
         """
         Get the best action
         :return: Move, the best action in current state
         """
-        self.search(100)
+        self.search(search_count)
         action_idx = self.root.select(self.model)
         return Move(action_idx)
 
