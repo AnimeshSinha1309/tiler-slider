@@ -1,32 +1,50 @@
+import copy
+from enum import Enum
+import typing as ty
+
 import numpy as np
 
-from enum import Enum
+
+class Move(Enum):
+    UP = 0
+    DOWN = 1
+    LEFT = 2
+    RIGHT = 3
+
+    @classmethod
+    def to_tuple(cls, direction):
+        if direction == cls.UP:
+            return -1, 0
+        elif direction == cls.DOWN:
+            return 1, 0
+        elif direction == cls.LEFT:
+            return 0, -1
+        elif direction == cls.RIGHT:
+            return 0, 1
+
+    @classmethod
+    def from_char(cls, direction):
+        if direction == 'U':
+            return cls.UP
+        elif direction == 'D':
+            return cls.DOWN
+        elif direction == 'L':
+            return cls.LEFT
+        elif direction == 'R':
+            return cls.RIGHT
 
 
 class GridState:
-
-    class Move(Enum):
-        UP = -1, 0
-        DOWN = 1, 0
-        LEFT = 0, -1
-        RIGHT = 0, 1
-
-        @classmethod
-        def from_char(cls, direction):
-            if direction == 'U':
-                return cls.UP
-            elif direction == 'D':
-                return cls.DOWN
-            elif direction == 'L':
-                return cls.LEFT
-            elif direction == 'R':
-                return cls.RIGHT
 
     def __init__(self, n, m, grid, tiles, targets):
         self.n, self.m = n, m
         self.grid = grid
         self.tiles = tiles
         self.targets = targets
+
+    def __copy__(self):
+        return GridState(self.n, self.m, np.copy(self.grid),
+                         copy.copy(self.tiles), copy.copy(self.targets))
 
     @classmethod
     def load(cls, input_file):
@@ -43,23 +61,37 @@ class GridState:
             targets.append((line[2], line[3]))
             # TODO: Add the 5th parameter for color, or make 2 modes default
         state = GridState(n, m, grid, tiles, targets)
-        moves = list(map(cls.Move.from_char, file.readline().strip('\n')))
+        moves = list(map(Move.from_char, file.readline().strip('\n')))
         file.close()
         return state, moves
 
-    def move(self, move: Move):
-        delta_r, delta_c = move.value
-        flag = 0
+    def move(self, move: Move) -> bool:
+        delta_r, delta_c = Move.to_tuple(move)
+        flag = False
         for idx, tile in enumerate(self.tiles):
             next_r, next_c = tile[0] + delta_r, tile[1] + delta_c
             if 0 <= next_r < self.n and 0 <= next_c < self.m and \
                     self.grid[next_r, next_c] and (next_r, next_c) not in self.tiles:
-                flag = 1
+                flag = True
                 tile = tile[0] + delta_r, tile[1] + delta_c
             self.tiles[idx] = tile
         return flag
 
-    def __str__(self):
+    def available_actions(self) -> ty.Dict[Move, bool]:
+        actions = {move: False for move in [Move.UP, Move.DOWN, Move.LEFT, Move.RIGHT]}
+        for action in actions:
+            for tile in self.tiles:
+                next_r, next_c = tile + actions
+                if 0 <= next_r < self.n and 0 <= next_c < self.m and \
+                        self.grid[next_r, next_c] and (next_r, next_c) not in self.tiles:
+                    actions[action] = True
+                    break
+        return actions
+
+    def done(self) -> bool:
+        return self.tiles == self.targets
+
+    def __str__(self) -> str:
         labels = np.full(shape=self.grid.shape, fill_value='.')
         for x, row in enumerate(self.grid):
             for y, cell in enumerate(row):
