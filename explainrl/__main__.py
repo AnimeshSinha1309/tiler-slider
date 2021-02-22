@@ -1,11 +1,20 @@
+import tqdm
+import os
 import argparse
 
-from explainrl.environment.display import GridRender
+from data_generator import generator
+# from explainrl.environment.display import GridRender
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--input-file', required=True, help='Input File Path')
+    parser.add_argument('--output-path', required=True,
+                        help='Output Data Path')
+    parser.add_argument('--count', type = int, required=True,
+                        help='Number of test files')
     args = parser.parse_args()
 
-    GridRender.load(args.input_file)
+    for i in tqdm.tqdm(range(args.count)):
+        path = os.path.join(args.output_path, str(i) + '.txt')
+        generator.generate(path)
+
