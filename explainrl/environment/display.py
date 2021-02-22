@@ -43,7 +43,7 @@ class GridRender(GridState):
                 if ((x, y) in self.tiles) ^ ((x, y) in self.targets):
                     pygame.draw.circle(self.screen, circle_color, (
                         y*config.BLOCK_SIZE + config.BLOCK_SIZE/2, x*config.BLOCK_SIZE + config.BLOCK_SIZE/2),
-                                       radius=config.RADIUS)
+                        radius=config.RADIUS)
 
         # draw lines
         for x in range(self.m):
@@ -76,6 +76,7 @@ class GridRender(GridState):
         state: GridRender = GridRender(
             state.n, state.m, state.grid, state.tiles, state.targets)
         state.render()
+        state.update(config.WAIT_TIME)
         print(state, "\n")
 
         for move in moves:
