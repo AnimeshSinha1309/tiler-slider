@@ -14,7 +14,7 @@ if __name__ == "__main__":
                         help='Number of test files')
     args = parser.parse_args()
 
-    for i in tqdm.tqdm(range(args.count)):
-        path = os.path.join(args.output_path, str(i) + '.txt')
+    for i in tqdm.tqdm(range(1,args.count+1)):
+        path = os.path.join(args.output_path, str(i).zfill(4) + '.txt')
         generator.generate(path)
 
