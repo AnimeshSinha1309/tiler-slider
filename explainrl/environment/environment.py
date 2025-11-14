@@ -87,7 +87,7 @@ class TilerSliderEnv:
             blocked_locations=level.blocked_locations,
             initial_locations=level.initial_locations,
             target_locations=level.target_locations,
-            multi_color=getattr(level, 'multiple_colors', False),
+            multi_color=level.multiple_colors,
             max_steps=max_steps
         )
 

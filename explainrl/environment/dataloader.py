@@ -24,6 +24,7 @@ class ImageLoader:
         blocked_locations: list[tuple[int, int]]
         initial_locations: list[tuple[int, int]]
         target_locations: list[tuple[int, int]]
+        multiple_colors: bool = False
 
     def __init__(self):
         self.files = list(filter(lambda x: x.endswith('.jpg'), sorted(os.listdir())))
@@ -128,4 +129,5 @@ class ImageLoader:
             blocked_locations=blocked_squares,
             initial_locations=tile_positions,
             target_locations=goal_positions,
+            multiple_colors=multiple_colors,
         )
