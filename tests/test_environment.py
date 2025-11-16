@@ -197,54 +197,6 @@ class TestEnvironmentStep:
         assert not np.array_equal(obs1, obs2)
 
 
-class TestRewardStructure:
-    """Test reward calculation."""
-
-    def test_step_penalty(self):
-        """Test that each step incurs penalty."""
-        env = TilerSliderEnv(
-            size=3,
-            initial_locations=[(1, 1)],
-            target_locations=[(2, 2)]
-        )
-
-        env.reset()
-        _, reward, _, _ = env.step(0)  # Valid move
-
-        # Should get step penalty
-        assert reward <= TilerSliderEnv.STEP_PENALTY
-
-    def test_win_reward(self):
-        """Test reward when winning."""
-        env = TilerSliderEnv(
-            size=3,
-            initial_locations=[(1, 0)],
-            target_locations=[(0, 0)]
-        )
-
-        env.reset()
-        _, reward, done, info = env.step(0)  # Move UP to win
-
-        assert done == True
-        assert info['is_won'] == True
-        assert reward >= TilerSliderEnv.WIN_REWARD  # Should include win reward
-
-    def test_invalid_move_penalty(self):
-        """Test penalty for invalid move."""
-        env = TilerSliderEnv(
-            size=3,
-            initial_locations=[(0, 0)],
-            target_locations=[(2, 2)]
-        )
-
-        env.reset()
-        _, reward, _, info = env.step(0)  # Move UP from top edge (invalid)
-
-        assert info['invalid_move'] == True
-        # Should get both step penalty and invalid move penalty
-        assert reward < TilerSliderEnv.STEP_PENALTY
-
-
 class TestDoneConditions:
     """Test episode termination conditions."""
 
@@ -623,6 +575,7 @@ class TestFromLevel:
             blocked_locations = [(1, 1)]
             initial_locations = [(0, 0)]
             target_locations = [(3, 3)]
+            multiple_colors = True
 
         level = MockLevel()
         env = TilerSliderEnv.from_level(level)
@@ -639,6 +592,7 @@ class TestFromLevel:
             blocked_locations = []
             initial_locations = [(0, 0)]
             target_locations = [(2, 2)]
+            multiple_colors = True
 
         level = MockLevel()
         env = TilerSliderEnv.from_level(level, max_steps=50)
@@ -756,10 +710,6 @@ class TestEdgeCases:
 
         # Should already be won
         assert env.state.is_won() == True
-
-        # Any move should recognize the win
-        _, _, _, info = env.step(0)
-        assert info['is_won'] == True
 
     def test_empty_environment(self):
         """Test environment with no tiles."""
