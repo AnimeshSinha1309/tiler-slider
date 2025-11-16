@@ -41,26 +41,24 @@ class StateEncoder(nn.Module):
         """
         Encode game state to tensor representation.
 
+        Always returns a fixed number of channels (1 + 3*max_tiles) for consistency,
+        regardless of the actual number of tiles or multi_color setting.
+
         Args:
             state: GameState to encode
 
         Returns:
-            Tensor of shape (num_channels, board_size, board_size)
-            where num_channels depends on multi_color mode
+            Tensor of shape (max_channels, max_board_size, max_board_size)
+            where max_channels = 1 + 3*max_tiles
         """
         size = state.size
         num_tiles = len(state.current_locations)
 
-        # Calculate number of channels needed
-        if state.multi_color:
-            # Multi-color: separate channel for each tile + blocked + distances
-            num_channels = 1 + num_tiles * 2 + num_tiles
-        else:
-            # Single-color: one channel for all tiles + blocked + distance
-            num_channels = 1 + 2 + 1
+        # Always use max channels for consistent network input
+        max_channels = 1 + 3 * self.max_tiles
 
-        # Initialize tensor
-        encoded = torch.zeros((num_channels, self.max_board_size, self.max_board_size))
+        # Initialize tensor with zeros (unused channels stay zero)
+        encoded = torch.zeros((max_channels, self.max_board_size, self.max_board_size))
 
         channel_idx = 0
 
@@ -71,44 +69,38 @@ class StateEncoder(nn.Module):
                     encoded[channel_idx, i, j] = 1.0
         channel_idx += 1
 
-        if state.multi_color:
-            # Channels 1 to num_tiles: Current positions (one channel per tile)
-            for tile_idx, (i, j) in enumerate(state.current_locations):
+        # Channels 1 to max_tiles: Current positions (one channel per tile)
+        # For single-color mode, we still use separate channels for consistency
+        for tile_idx, (i, j) in enumerate(state.current_locations):
+            if tile_idx < self.max_tiles:
                 encoded[channel_idx + tile_idx, i, j] = 1.0
-            channel_idx += num_tiles
+        channel_idx += self.max_tiles
 
-            # Channels: Target positions (one channel per tile)
-            for tile_idx, (i, j) in enumerate(state.target_locations):
+        # Channels max_tiles+1 to 2*max_tiles: Target positions (one channel per tile)
+        for tile_idx, (i, j) in enumerate(state.target_locations):
+            if tile_idx < self.max_tiles:
                 encoded[channel_idx + tile_idx, i, j] = 1.0
-            channel_idx += num_tiles
+        channel_idx += self.max_tiles
 
-            # Channels: Manhattan distance from each tile to its target
-            for tile_idx in range(num_tiles):
-                curr = state.current_locations[tile_idx]
+        # Channels 2*max_tiles+1 to 3*max_tiles: Distance from each tile to target
+        for tile_idx in range(min(num_tiles, self.max_tiles)):
+            curr = state.current_locations[tile_idx]
+
+            # Calculate distance based on mode
+            if state.multi_color:
+                # Multi-color: distance to specific target
                 target = state.target_locations[tile_idx]
                 distance = abs(curr[0] - target[0]) + abs(curr[1] - target[1])
-                # Normalize distance by board size
-                encoded[channel_idx + tile_idx, curr[0], curr[1]] = distance / (2 * size)
-            channel_idx += num_tiles
-        else:
-            # Single channel for all current positions
-            for i, j in state.current_locations:
-                encoded[channel_idx, i, j] = 1.0
-            channel_idx += 1
-
-            # Single channel for all targets
-            for i, j in state.target_locations:
-                encoded[channel_idx, i, j] = 1.0
-            channel_idx += 1
-
-            # Single channel for minimum distance to any target
-            for curr in state.current_locations:
-                min_dist = min(
+            else:
+                # Single-color: distance to nearest target
+                distance = min(
                     abs(curr[0] - t[0]) + abs(curr[1] - t[1])
                     for t in state.target_locations
                 )
-                encoded[channel_idx, curr[0], curr[1]] = min_dist / (2 * size)
-            channel_idx += 1
+
+            # Normalize distance by board size
+            encoded[channel_idx + tile_idx, curr[0], curr[1]] = distance / (2 * size)
+        channel_idx += self.max_tiles
 
         return encoded
 

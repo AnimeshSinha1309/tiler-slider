@@ -43,18 +43,18 @@ class TestStateEncoder:
         encoder = StateEncoder(max_board_size=16, max_tiles=10)
         encoded = encoder.encode(env.state)
 
-        # Check shape
-        assert encoded.shape[1] == 16  # max_board_size
-        assert encoded.shape[2] == 16
+        # Check shape - should always be max_channels = 1 + 3*max_tiles
+        max_channels = 1 + 3 * 10
+        assert encoded.shape == (max_channels, 16, 16)
 
         # Check blocked cell is encoded
         assert encoded[0, 1, 1] == 1.0
 
-        # Check tile position
+        # Check tile position (channel 1)
         assert encoded[1, 0, 0] == 1.0
 
-        # Check target position
-        assert encoded[2, 3, 3] == 1.0
+        # Check target position (channel 11 = 1 + max_tiles)
+        assert encoded[11, 3, 3] == 1.0
 
     def test_encode_multi_color(self):
         """Test encoding multi-color state."""
@@ -72,12 +72,17 @@ class TestStateEncoder:
         encoder = StateEncoder(max_board_size=16, max_tiles=10)
         encoded = encoder.encode(env.state)
 
-        # Should have separate channels for each tile
-        assert encoded.shape[0] >= 5  # At least: blocked + 2 tiles + 2 targets
+        # Should always have max_channels = 1 + 3*max_tiles
+        max_channels = 1 + 3 * 10
+        assert encoded.shape == (max_channels, 16, 16)
 
         # Check tiles are in separate channels
-        assert encoded[1, 0, 0] == 1.0  # Tile 0
-        assert encoded[2, 0, 1] == 1.0  # Tile 1
+        assert encoded[1, 0, 0] == 1.0  # Tile 0 (channel 1)
+        assert encoded[2, 0, 1] == 1.0  # Tile 1 (channel 2)
+
+        # Check targets are in correct channels (starting at 1 + max_tiles = 11)
+        assert encoded[11, 3, 0] == 1.0  # Target 0
+        assert encoded[12, 3, 1] == 1.0  # Target 1
 
     def test_encode_tensor_type(self):
         """Test that encoding returns proper tensor."""
