@@ -1,91 +1,312 @@
+"""
+Rendering classes for Tiler-Slider environment.
+
+This module provides different renderers for visualizing the game state:
+- TextRender: ASCII text rendering
+- PygameRender: Graphical rendering using pygame
+"""
+
 import sys
-import typing
-
+from typing import Optional
 import pygame
+from .config import COLORS, TILE_COLORS, BLOCK_SIZE, RADIUS, LINE_WIDTH, WAIT_TIME, ANIMATION_TIME
+from .environment import TilerSliderEnv
+from .state import GameState
 
-from explainrl.environment import config
-from explainrl.environment.state import GridState
+
+class TextRender:
+    """
+    Text-based renderer for Tiler-Slider environment.
+
+    Renders the game state as ASCII art with:
+    - Lowercase letters (a, b, c...) for tiles
+    - Uppercase letters (A, B, C...) for targets
+    - 'X' for blocked cells
+    - '.' for empty cells
+    """
+
+    def __init__(self, env: TilerSliderEnv):
+        """
+        Initialize text renderer.
+
+        Args:
+            env: TilerSliderEnv instance to render
+        """
+        self.env = env
+
+    def render(self, show_info: bool = True) -> str:
+        """
+        Render the current environment state as text.
+
+        Args:
+            show_info: Whether to include step count and status
+
+        Returns:
+            String representation of the board
+        """
+        if self.env.state is None:
+            return "Environment not initialized. Call reset() first."
+
+        output = []
+
+        if show_info:
+            output.append(f"Step: {self.env.step_count}/{self.env.max_steps}")
+            output.append(f"Done: {self.env.done}")
+            output.append("")
+
+        # Render the board
+        board = []
+        for i in range(self.env.size):
+            row = []
+            for j in range(self.env.size):
+                # Check if there's a target at this position
+                if (i, j) in self.env.state.target_locations:
+                    idx = self.env.state.target_locations.index((i, j)) if self.env.multi_color else 0
+                    row.append(chr(idx + ord('A')))
+                # Check if there's a tile at this position
+                elif (i, j) in self.env.state.current_locations:
+                    idx = self.env.state.current_locations.index((i, j)) if self.env.multi_color else 0
+                    row.append(chr(idx + ord('a')))
+                # Check if blocked
+                elif self.env.state.is_blocked[i, j]:
+                    row.append('X')
+                # Empty cell
+                else:
+                    row.append('.')
+            board.append(''.join(row))
+
+        output.extend(board)
+        return '\n'.join(output)
+
+    def __str__(self) -> str:
+        """String representation using render method."""
+        return self.render()
+
+    @classmethod
+    def simulate(cls, env: TilerSliderEnv, moves: list[GameState.Move],
+                 print_each_step: bool = True) -> bool:
+        """
+        Simulate a sequence of moves and render each step.
+
+        Args:
+            env: Environment to simulate
+            moves: List of moves to execute
+            print_each_step: Whether to print state after each move
+
+        Returns:
+            True if puzzle was solved, False otherwise
+        """
+        renderer = cls(env)
+        env.reset()
+
+        if print_each_step:
+            print("Initial state:")
+            print(renderer.render())
+            print()
+
+        for i, move in enumerate(moves):
+            obs, done, info = env.step(move)
+
+            if print_each_step:
+                print(f"Move {i+1}: {move.name}")
+                print(renderer.render())
+                print()
+
+            if done:
+                if info.get('is_won'):
+                    if print_each_step:
+                        print("Puzzle solved!")
+                    return True
+                elif info.get('timeout'):
+                    if print_each_step:
+                        print("Timeout!")
+                    return False
+
+        return env.state.is_won()
 
 
-class GridRender(GridState):
+class PygameRender:
+    """
+    Pygame-based graphical renderer for Tiler-Slider environment.
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    Provides animated visualization with:
+    - Color-coded tiles and targets
+    - Smooth animations
+    - Interactive display
+    """
+
+    def __init__(self, env: TilerSliderEnv):
+        """
+        Initialize pygame renderer.
+
+        Args:
+            env: TilerSliderEnv instance to render
+        """
+        self.env = env
         pygame.init()
-        window_width: int = self.m * config.BLOCK_SIZE
-        window_height: int = self.n * config.BLOCK_SIZE
-        window_title: str = "Tiler Slider"
-        self.screen = pygame.display.set_mode((window_height, window_width))
-        pygame.display.set_caption(window_title)
+
+        window_width = self.env.size * BLOCK_SIZE
+        window_height = self.env.size * BLOCK_SIZE
+        self.screen = pygame.display.set_mode((window_width, window_height))
+        pygame.display.set_caption("Tiler-Slider")
 
     def render(self):
-        for x in range(self.m):
-            for y in range(self.n):
+        """Render the current state to the pygame window."""
+        if self.env.state is None:
+            return
+
+        for i in range(self.env.size):
+            for j in range(self.env.size):
                 rect = pygame.Rect(
-                    y * config.BLOCK_SIZE, x * config.BLOCK_SIZE, config.BLOCK_SIZE, config.BLOCK_SIZE)
-                circle_color = config.COLORS["SPACE"]
-                # assigning colour based on grid value
-                if (x, y) in self.tiles and (x, y) in self.targets:
-                    color = config.COLORS["COMBINED"]
-                elif (x, y) in self.tiles:
-                    color = config.COLORS["TILE"]
-                    circle_color = config.COLORS["SPACE"]
-                elif (x, y) in self.targets:
-                    color = config.COLORS["SPACE"]
-                    circle_color = config.COLORS["TARGET"]
-                elif self.grid[x, y]:
-                    color = config.COLORS["SPACE"]
+                    j * BLOCK_SIZE,
+                    i * BLOCK_SIZE,
+                    BLOCK_SIZE,
+                    BLOCK_SIZE
+                )
+
+                circle_color = COLORS["SPACE"]
+
+                # Determine cell color based on state
+                if ((i, j) in self.env.state.current_locations and
+                    (i, j) in self.env.state.target_locations):
+                    # Tile is at its target position
+                    if self.env.multi_color:
+                        # Use tile's color (matching target color)
+                        tile_idx = self.env.state.current_locations.index((i, j))
+                        color = TILE_COLORS[tile_idx % len(TILE_COLORS)]
+                    else:
+                        color = COLORS["COMBINED"]
+                elif (i, j) in self.env.state.current_locations:
+                    # Tile position (not at target)
+                    if self.env.multi_color:
+                        tile_idx = self.env.state.current_locations.index((i, j))
+                        color = TILE_COLORS[tile_idx % len(TILE_COLORS)]
+                    else:
+                        color = COLORS["TILE"]
+                    circle_color = COLORS["SPACE"]
+                elif (i, j) in self.env.state.target_locations:
+                    # Target position (no tile)
+                    color = COLORS["SPACE"]
+                    if self.env.multi_color:
+                        target_idx = self.env.state.target_locations.index((i, j))
+                        circle_color = TILE_COLORS[target_idx % len(TILE_COLORS)]
+                    else:
+                        circle_color = COLORS["TARGET"]
+                elif self.env.state.is_blocked[i, j]:
+                    color = COLORS["OBSTACLE"]
                 else:
-                    color = config.COLORS["OBSTACLE"]
+                    color = COLORS["SPACE"]
 
                 pygame.draw.rect(self.screen, color, rect, 0, border_radius=0)
 
-                if ((x, y) in self.tiles) ^ ((x, y) in self.targets):
-                    pygame.draw.circle(self.screen, circle_color, (
-                        y*config.BLOCK_SIZE + config.BLOCK_SIZE/2, x*config.BLOCK_SIZE + config.BLOCK_SIZE/2),
-                        radius=config.RADIUS)
+                # Draw circles for tiles or targets (but not both)
+                if (((i, j) in self.env.state.current_locations) ^
+                    ((i, j) in self.env.state.target_locations)):
+                    pygame.draw.circle(
+                        self.screen,
+                        circle_color,
+                        (j * BLOCK_SIZE + BLOCK_SIZE // 2,
+                         i * BLOCK_SIZE + BLOCK_SIZE // 2),
+                        radius=RADIUS
+                    )
 
-        # draw lines
-        for x in range(self.m):
-            pygame.draw.line(self.screen, config.COLORS['LINE'], (
-                x*config.BLOCK_SIZE, 0), (x*config.BLOCK_SIZE, self.n*config.BLOCK_SIZE), config.LINE_WIDTH)
+        # Draw grid lines
+        for i in range(self.env.size + 1):
+            # Horizontal lines
+            pygame.draw.line(
+                self.screen,
+                COLORS['LINE'],
+                (0, i * BLOCK_SIZE),
+                (self.env.size * BLOCK_SIZE, i * BLOCK_SIZE),
+                LINE_WIDTH
+            )
+            # Vertical lines
+            pygame.draw.line(
+                self.screen,
+                COLORS['LINE'],
+                (i * BLOCK_SIZE, 0),
+                (i * BLOCK_SIZE, self.env.size * BLOCK_SIZE),
+                LINE_WIDTH
+            )
 
-        for y in range(self.n):
-            pygame.draw.line(self.screen, config.COLORS['LINE'], (
-                0, y*config.BLOCK_SIZE), (self.m*config.BLOCK_SIZE, y*config.BLOCK_SIZE), config.LINE_WIDTH)
+    def update(self, wait_time: int = WAIT_TIME):
+        """
+        Update the display and wait.
 
-    def update(self, time):
-        self.screen.fill(config.COLORS["SCREEN"])
+        Args:
+            wait_time: Time to wait in milliseconds
+        """
+        self.screen.fill(COLORS["SCREEN"])
         self.render()
         pygame.display.update()
-        pygame.time.wait(time)
+        pygame.time.wait(wait_time)
 
     @staticmethod
-    def respond():
+    def check_quit() -> bool:
+        """
+        Check for quit events.
+
+        Returns:
+            True if user wants to quit, False otherwise
+        """
         for event in pygame.event.get():
-            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_q):
-                pygame.quit()
-                sys.exit()
+            if event.type == pygame.QUIT or (
+                event.type == pygame.KEYDOWN and event.key == pygame.K_q
+            ):
+                return True
+        return False
+
+    def close(self):
+        """Close the pygame window."""
+        pygame.quit()
 
     @classmethod
-    def load(cls, input_file):
-        state: GridState
-        moves: typing.List[typing.Tuple[int, int]]
-        state, moves = super().load(input_file)
+    def simulate(cls, env: TilerSliderEnv, moves: list[GameState.Move],
+                 animate: bool = True) -> bool:
+        """
+        Simulate a sequence of moves with pygame visualization.
 
-        state: GridRender = GridRender(
-            state.n, state.m, state.grid, state.tiles, state.targets)
-        state.render()
-        state.update(config.WAIT_TIME)
-        print(state, "\n")
+        Args:
+            env: Environment to simulate
+            moves: List of moves to execute
+            animate: Whether to animate the movements
+
+        Returns:
+            True if puzzle was solved, False otherwise
+        """
+        renderer = cls(env)
+        env.reset()
+
+        # Show initial state
+        renderer.update(WAIT_TIME)
 
         for move in moves:
-            print(state, "\n")
-            for _ in range(max(state.n, state.m) + 1):
-                flag = state.move(move)
-                if flag == 0:
-                    # no tiles position changed
-                    pygame.time.wait(config.WAIT_TIME)
-                    break
-                state.update(config.ANIMATION_TIME)
-            state.respond()
+            if renderer.check_quit():
+                renderer.close()
+                sys.exit()
+
+            # Execute move
+            obs, done, info = env.step(move)
+
+            # Animate if requested
+            if animate and not info.get('invalid_move'):
+                for _ in range(max(env.size // 2, 3)):
+                    renderer.update(ANIMATION_TIME)
+                    if renderer.check_quit():
+                        renderer.close()
+                        sys.exit()
+            else:
+                renderer.update(WAIT_TIME)
+
+            if done:
+                # Show final state
+                renderer.update(WAIT_TIME * 2)
+                won = info.get('is_won', False)
+                renderer.close()
+                return won
+
+        # Final check
+        won = env.state.is_won()
+        renderer.update(WAIT_TIME * 2)
+        renderer.close()
+        return won
