@@ -5,7 +5,7 @@ These tests verify that the refactored GameState behaves identically
 to the original GameEnvironment implementation.
 """
 
-from explainrl.environment import GameState, ImageLoader
+from explainrl.environment import GameState, ImageLoader, TilerSliderEnv, TextRender
 
 
 def test_game_sequence_1():
@@ -27,45 +27,45 @@ def test_game_sequence_1():
         multiple_colors=True
     )
 
-    # Create state from level
-    state = GameState(
-        size=test_level.size,
-        blocked_locations=test_level.blocked_locations,
-        initial_locations=test_level.initial_locations,
-        target_locations=test_level.target_locations,
-        multi_color=test_level.multiple_colors
-    )
+    # Create environment from level
+    env = TilerSliderEnv.from_level(test_level)
+    renderer = TextRender(env)
+    env.reset()
 
     # Initial state: tile a at (0,3), tile b at (3,2)
     # Target A at (0,0), target B at (3,0)
-    assert state.render() == "A..a\nX...\n...X\nB.b.\n"
+    assert renderer.render(show_info=False) == "A..a\nX...\n...X\nB.b."
 
     # Move RIGHT: tile a stays at (0,3), tile b moves to (3,3)
-    assert state.move(GameState.Move.RIGHT) is False
-    assert state.render() == "A..a\nX...\n...X\nB..b\n"
+    obs, done, info = env.step(GameState.Move.RIGHT)
+    assert done is False
+    assert renderer.render(show_info=False) == "A..a\nX...\n...X\nB..b"
 
     # Move DOWN: tile a moves to (1,3), tile b stays at (3,3)
-    assert state.move(GameState.Move.DOWN) is False
-    assert state.render() == "A...\nX..a\n...X\nB..b\n"
+    obs, done, info = env.step(GameState.Move.DOWN)
+    assert done is False
+    assert renderer.render(show_info=False) == "A...\nX..a\n...X\nB..b"
 
     # Move LEFT: tile a moves to (1,1), tile b moves to (3,0)
-    # Note: tile b is now at target B, so only 'B' shows (target displayed over tile)
-    assert state.move(GameState.Move.LEFT) is False
-    assert state.render() == "A...\nXa..\n...X\nB...\n"
+    obs, done, info = env.step(GameState.Move.LEFT)
+    assert done is False
+    assert renderer.render(show_info=False) == "A...\nXa..\n...X\nB..."
 
     # Move UP: tile a moves to (0,1), tile b moves to (2,0)
-    assert state.move(GameState.Move.UP) is False
-    assert state.render() == "Aa..\nX...\nb..X\nB...\n"
+    obs, done, info = env.step(GameState.Move.UP)
+    assert done is False
+    assert renderer.render(show_info=False) == "Aa..\nX...\nb..X\nB..."
 
     # Move LEFT: tile a moves to (0,0), tile b stays at (2,0)
-    # Note: tile a is now at target A, so only 'A' shows
-    assert state.move(GameState.Move.LEFT) is False
-    assert state.render() == "A...\nX...\nb..X\nB...\n"
+    obs, done, info = env.step(GameState.Move.LEFT)
+    assert done is False
+    assert renderer.render(show_info=False) == "A...\nX...\nb..X\nB..."
 
     # Move DOWN: tile a stays at (0,0), tile b moves to (3,0) - WIN!
-    # Both tiles are now at their targets
-    assert state.move(GameState.Move.DOWN) is True
-    assert state.render() == "A...\nX...\n...X\nB...\n"
+    obs, done, info = env.step(GameState.Move.DOWN)
+    assert done is True
+    assert info['is_won'] is True
+    assert renderer.render(show_info=False) == "A...\nX...\n...X\nB..."
 
 
 def test_game_sequence_2():
@@ -75,7 +75,7 @@ def test_game_sequence_2():
     This test verifies:
     - Multiple tiles moving in same direction
     - Tiles reaching edge and staying there
-    - Invalid moves (no state change) return False
+    - Invalid moves (no state change) return info
     - Rendering accuracy throughout
     """
     test_level = ImageLoader.ImageProcessed(
@@ -86,62 +86,46 @@ def test_game_sequence_2():
         multiple_colors=True
     )
 
-    state = GameState(
-        size=test_level.size,
-        blocked_locations=test_level.blocked_locations,
-        initial_locations=test_level.initial_locations,
-        target_locations=test_level.target_locations,
-        multi_color=test_level.multiple_colors
-    )
+    env = TilerSliderEnv.from_level(test_level)
+    renderer = TextRender(env)
+    env.reset()
 
     # Initial state
-    assert state.render() == "A..a\nX...\n...X\nB.b.\n"
+    assert renderer.render(show_info=False) == "A..a\nX...\n...X\nB.b."
 
     # Move DOWN: tile a moves to (1,3), tile b stays at (3,2)
-    assert state.move(GameState.Move.DOWN) is False
-    assert state.render() == "A...\nX..a\n...X\nB.b.\n"
+    obs, done, info = env.step(GameState.Move.DOWN)
+    assert done is False
+    assert renderer.render(show_info=False) == "A...\nX..a\n...X\nB.b."
 
     # Move LEFT: tile a moves to (1,1), tile b moves to (3,0)
-    assert state.move(GameState.Move.LEFT) is False
-    assert state.render() == "A...\nXa..\n...X\nB...\n"
+    obs, done, info = env.step(GameState.Move.LEFT)
+    assert done is False
+    assert renderer.render(show_info=False) == "A...\nXa..\n...X\nB..."
 
     # Move DOWN: tile a moves to (3,1), tile b stays at (3,0)
-    assert state.move(GameState.Move.DOWN) is False
-    assert state.render() == "A...\nX...\n...X\nBa..\n"
+    obs, done, info = env.step(GameState.Move.DOWN)
+    assert done is False
+    assert renderer.render(show_info=False) == "A...\nX...\n...X\nBa.."
 
     # Move RIGHT: tile a moves to (3,2), tile b stays at (3,0)
-    assert state.move(GameState.Move.RIGHT) is False
-    assert state.render() == "A...\nX...\n...X\nB.ba\n"
+    obs, done, info = env.step(GameState.Move.RIGHT)
+    assert done is False
+    # After moving right, tile 'a' should be at (3,3), tile 'b' at (3,2)?
+    # Let me check: from (3,1), moving RIGHT with tile b at (3,0)
+    # Actually tile a at (3,1) slides right, and based on original test expects "B.ba"
+    # which means B at (3,0), then '.', then 'b' at (3,2), then 'a' at (3,3)
+    assert renderer.render(show_info=False) == "A...\nX...\n...X\nB.ba"
 
-    # Move RIGHT again: tile a tries to move but hits blocked cell at (2,3), stays at (3,2)
-    # Actually, tile a moves to (3,3) first, then gets pushed back? Let me trace:
-    # Wait, the expected output is the same, so tile a must stay at (3,2)
-    # Actually looking at the precomputation logic, from (3,2) moving RIGHT:
-    # - Check (3,3): not blocked, so can go there... unless blocked at (2,3) affects it?
-    # No wait, (2,3) is blocked, but that's a different row.
-    # From (3,2), moving RIGHT should go to (3,3).
-    # But the test expects no change. Let me check if there's tile collision.
-    # Tile b is at (3,0), so no collision at (3,3).
-    # Hmm, this is odd. Let me re-read the test.
-    # Oh wait, looking at the previous move, after moving RIGHT, the state is "B.ba\n"
-    # This means tile a is at (3,3) already! Not (3,2).
-    # So the second RIGHT move from (3,3) should indeed not change anything (already at edge).
-    assert state.move(GameState.Move.RIGHT) is False
-    assert state.render() == "A...\nX...\n...X\nB.ba\n"
+    # Move RIGHT again: tile a tries to move but is at edge, stays at (3,3)
+    obs, done, info = env.step(GameState.Move.RIGHT)
+    assert done is False
+    assert renderer.render(show_info=False) == "A...\nX...\n...X\nB.ba"
 
-    # Move LEFT: tile a moves to (3,0)? No, tile b is there. So moves to (3,1)?
-    # Let's think: processing order for LEFT is left-to-right.
-    # Tile b at (3,0) moves LEFT -> stays at (3,0) (edge)
-    # Tile a at (3,3) moves LEFT -> should go to (3,0) but blocked by tile b, so goes to (3,1)
-    # Wait, that's not right either. Let me re-check the move logic.
-    # Actually, looking at the move() method, it processes tiles in a specific order.
-    # For LEFT, it sorts by column (ascending), so processes leftmost tiles first.
-    # - Tile b at (3,0) is processed first: moves LEFT -> stays at (3,0)
-    # - Tile a at (3,3) is processed second: moves LEFT -> destination is (3,0), but occupied, so backs up to (3,1)
-    # Expected: "A...\nX...\n...X\nBa..\n"
-    # This shows tile b at (3,0) and tile a at (3,1). Correct!
-    assert state.move(GameState.Move.LEFT) is False
-    assert state.render() == "A...\nX...\n...X\nBa..\n"
+    # Move LEFT: tile b at (3,0) stays, tile a at (3,3) moves to (3,1)
+    obs, done, info = env.step(GameState.Move.LEFT)
+    assert done is False
+    assert renderer.render(show_info=False) == "A...\nX...\n...X\nBa.."
 
 
 if __name__ == "__main__":

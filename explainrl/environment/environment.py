@@ -1,8 +1,8 @@
 """
-Gym-like environment wrapper for Tiler-Slider puzzle game.
+Environment wrapper for Tiler-Slider puzzle game.
 
-This module provides a reinforcement learning-friendly interface
-following the OpenAI Gym API conventions.
+This module provides a clean interface for interacting with the game state.
+Rendering and reward calculation are handled separately.
 """
 
 from typing import Tuple, Optional, Dict, Any
@@ -13,33 +13,22 @@ from .dataloader import ImageLoader
 
 class TilerSliderEnv:
     """
-    Reinforcement Learning environment for Tiler-Slider puzzle.
+    Environment for Tiler-Slider puzzle.
 
-    Follows Gym-like interface with:
+    Provides:
     - reset(): Initialize a new episode
-    - step(action): Execute action and get next state
-    - render(): Visualize the current state
+    - step(move): Execute a move and get next state
     - close(): Cleanup resources
 
-    Action Space: Discrete(4)
-        0: UP
-        1: DOWN
-        2: LEFT
-        3: RIGHT
+    Action Space: GameState.Move enum
+        - GameState.Move.UP
+        - GameState.Move.DOWN
+        - GameState.Move.LEFT
+        - GameState.Move.RIGHT
 
     Observation Space: Box(size, size, 3)
         3-channel image representing blocked cells, tiles, and targets
-
-    Reward Structure:
-        - WIN_REWARD: Achieved when puzzle is solved
-        - STEP_PENALTY: Small penalty per step to encourage efficiency
-        - INVALID_MOVE_PENALTY: Penalty for moves that don't change state
     """
-
-    # Reward constants
-    WIN_REWARD = 100.0
-    STEP_PENALTY = -0.1
-    INVALID_MOVE_PENALTY = -1.0
 
     def __init__(self, size: int = None, blocked_locations: list = None,
                  initial_locations: list = None, target_locations: list = None,
@@ -67,7 +56,6 @@ class TilerSliderEnv:
         self.done = False
 
         # Action and observation spaces
-        self.action_space_n = 4  # UP, DOWN, LEFT, RIGHT
         self.observation_shape = (size, size, 3) if size else None
 
     @classmethod
@@ -109,47 +97,40 @@ class TilerSliderEnv:
         self.done = False
         return self.state.get_state_array()
 
-    def step(self, action: int) -> Tuple[np.ndarray, float, bool, Dict[str, Any]]:
+    def step(self, move: GameState.Move) -> Tuple[np.ndarray, bool, Dict[str, Any]]:
         """
         Execute one step in the environment.
 
         Args:
-            action: Integer action (0=UP, 1=DOWN, 2=LEFT, 3=RIGHT)
+            move: GameState.Move enum value (UP, DOWN, LEFT, RIGHT)
 
         Returns:
-            Tuple of (observation, reward, done, info):
+            Tuple of (observation, done, info):
                 - observation: Current state as numpy array
-                - reward: Reward for this step
                 - done: Whether episode has terminated
                 - info: Dictionary with additional information
         """
         if self.done:
             raise RuntimeError("Episode is done. Call reset() to start a new episode.")
 
-        if not 0 <= action < self.action_space_n:
-            raise ValueError(f"Invalid action {action}. Must be in range [0, {self.action_space_n})")
+        if not isinstance(move, GameState.Move):
+            raise TypeError(f"Action must be a GameState.Move enum, got {type(move)}")
 
         # Store previous state to detect invalid moves
         prev_locations = self.state.current_locations.copy()
 
         # Execute move
-        move = GameState.Move.from_int(action)
         is_won = self.state.move(move)
 
-        # Calculate reward
-        reward = self.STEP_PENALTY
-        info = {'is_won': is_won, 'step_count': self.step_count}
-
-        # Check if move was invalid (no change in state)
-        if prev_locations == self.state.current_locations:
-            reward += self.INVALID_MOVE_PENALTY
-            info['invalid_move'] = True
-        else:
-            info['invalid_move'] = False
+        # Build info dictionary
+        info = {
+            'is_won': is_won,
+            'step_count': self.step_count,
+            'invalid_move': prev_locations == self.state.current_locations
+        }
 
         # Check win condition
         if is_won:
-            reward += self.WIN_REWARD
             self.done = True
             info['success'] = True
 
@@ -159,60 +140,35 @@ class TilerSliderEnv:
             self.done = True
             info['timeout'] = True
 
-        return self.state.get_state_array(), reward, self.done, info
-
-    def render(self, mode: str = 'human') -> Optional[str]:
-        """
-        Render the current state.
-
-        Args:
-            mode: Rendering mode ('human' for text, 'rgb_array' for numpy array)
-
-        Returns:
-            String representation if mode='human', None otherwise
-        """
-        if self.state is None:
-            return "Environment not initialized. Call reset() first."
-
-        if mode == 'human':
-            output = f"Step: {self.step_count}/{self.max_steps}\n"
-            output += f"Done: {self.done}\n"
-            output += self.state.render()
-            return output
-        elif mode == 'rgb_array':
-            # For visualization libraries that expect RGB arrays
-            return self.state.get_state_array()
-        else:
-            raise ValueError(f"Unsupported render mode: {mode}")
+        return self.state.get_state_array(), self.done, info
 
     def close(self):
         """Clean up resources."""
         self.state = None
 
-    def get_valid_actions(self) -> list[int]:
+    def get_valid_moves(self) -> list[GameState.Move]:
         """
-        Get list of actions that would change the state.
+        Get list of moves that would change the state.
 
         Returns:
-            List of valid action indices
+            List of valid Move enum values
         """
         if self.state is None:
             return []
 
-        valid_actions = []
+        valid_moves = []
         current_locations = self.state.current_locations.copy()
 
-        for action in range(self.action_space_n):
+        for move in GameState.Move:
             # Create temporary state to test move
             temp_state = self.state.copy()
-            move = GameState.Move.from_int(action)
             temp_state.move(move)
 
-            # If state changed, action is valid
+            # If state changed, move is valid
             if temp_state.current_locations != current_locations:
-                valid_actions.append(action)
+                valid_moves.append(move)
 
-        return valid_actions
+        return valid_moves
 
     def get_info(self) -> Dict[str, Any]:
         """
@@ -234,7 +190,7 @@ class TilerSliderEnv:
             'num_tiles': len(self.state.current_locations),
             'num_targets': len(self.state.target_locations),
             'multi_color': self.multi_color,
-            'valid_actions': self.get_valid_actions()
+            'valid_moves': self.get_valid_moves()
         }
 
 

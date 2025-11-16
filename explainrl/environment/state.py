@@ -185,40 +185,6 @@ class GameState:
         else:
             return set(self.current_locations) == set(self.target_locations)
 
-    def render(self) -> str:
-        """
-        Render the board as a string.
-
-        FIX 5: Better visualization
-        - Lowercase letters (a, b, c...) for tiles
-        - Uppercase letters (A, B, C...) for targets
-        - 'X' for blocked cells
-        - '.' for empty cells
-        - In multi-color mode, matching tiles/targets use same letter
-
-        Returns:
-            String representation of the board
-        """
-        board = []
-        for i in range(self.size):
-            for j in range(self.size):
-                if (i, j) in self.target_locations:
-                    idx = self.target_locations.index((i, j)) if self.multi_color else 0
-                    board.append(chr(idx + ord('A')))
-                elif (i, j) in self.current_locations:
-                    idx = self.current_locations.index((i, j)) if self.multi_color else 0
-                    board.append(chr(idx + ord('a')))
-                elif self.is_blocked[i, j]:
-                    board.append('X')
-                else:
-                    board.append('.')
-            board.append("\n")
-        return "".join(board)
-
-    def __str__(self) -> str:
-        """String representation using render method."""
-        return self.render()
-
     def get_state_array(self) -> np.ndarray:
         """
         Get numerical representation of the board for ML models.
