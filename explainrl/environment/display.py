@@ -9,7 +9,7 @@ This module provides different renderers for visualizing the game state:
 import sys
 from typing import Optional
 import pygame
-from .config import COLORS, BLOCK_SIZE, RADIUS, LINE_WIDTH, WAIT_TIME, ANIMATION_TIME
+from .config import COLORS, TILE_COLORS, BLOCK_SIZE, RADIUS, LINE_WIDTH, WAIT_TIME, ANIMATION_TIME
 from .environment import TilerSliderEnv
 from .state import GameState
 
@@ -169,13 +169,29 @@ class PygameRender:
                 # Determine cell color based on state
                 if ((i, j) in self.env.state.current_locations and
                     (i, j) in self.env.state.target_locations):
-                    color = COLORS["COMBINED"]
+                    # Tile is at its target position
+                    if self.env.multi_color:
+                        # Use tile's color (matching target color)
+                        tile_idx = self.env.state.current_locations.index((i, j))
+                        color = TILE_COLORS[tile_idx % len(TILE_COLORS)]
+                    else:
+                        color = COLORS["COMBINED"]
                 elif (i, j) in self.env.state.current_locations:
-                    color = COLORS["TILE"]
+                    # Tile position (not at target)
+                    if self.env.multi_color:
+                        tile_idx = self.env.state.current_locations.index((i, j))
+                        color = TILE_COLORS[tile_idx % len(TILE_COLORS)]
+                    else:
+                        color = COLORS["TILE"]
                     circle_color = COLORS["SPACE"]
                 elif (i, j) in self.env.state.target_locations:
+                    # Target position (no tile)
                     color = COLORS["SPACE"]
-                    circle_color = COLORS["TARGET"]
+                    if self.env.multi_color:
+                        target_idx = self.env.state.target_locations.index((i, j))
+                        circle_color = TILE_COLORS[target_idx % len(TILE_COLORS)]
+                    else:
+                        circle_color = COLORS["TARGET"]
                 elif self.env.state.is_blocked[i, j]:
                     color = COLORS["OBSTACLE"]
                 else:
