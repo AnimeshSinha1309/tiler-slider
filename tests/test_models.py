@@ -41,7 +41,7 @@ class TestStateEncoder:
         env.reset()
 
         encoder = StateEncoder(max_board_size=16, max_tiles=10)
-        encoded = encoder.encode(env.state)
+        encoded = encoder.encode(env.state, device='cpu')
 
         # Check shape - should always be max_channels = 1 + 3*max_tiles
         max_channels = 1 + 3 * 10
@@ -70,7 +70,7 @@ class TestStateEncoder:
         env.reset()
 
         encoder = StateEncoder(max_board_size=16, max_tiles=10)
-        encoded = encoder.encode(env.state)
+        encoded = encoder.encode(env.state, device='cpu')
 
         # Should always have max_channels = 1 + 3*max_tiles
         max_channels = 1 + 3 * 10
@@ -92,7 +92,7 @@ class TestStateEncoder:
         env.reset()
 
         encoder = StateEncoder()
-        encoded = encoder.encode(env.state)
+        encoded = encoder.encode(env.state, device='cpu')
 
         assert isinstance(encoded, torch.Tensor)
         assert encoded.dtype == torch.float32
@@ -311,16 +311,17 @@ class TestPPOTrainer:
     def test_trainer_initialization(self):
         """Test PPO trainer can be initialized."""
         model = TilerSliderNet(hidden_dim=128, num_recursive_steps=2)
-        trainer = PPOTrainer(model, learning_rate=3e-4)
+        trainer = PPOTrainer(model, learning_rate=3e-4, device='cpu')
 
         assert trainer.model == model
         assert trainer.gamma == 0.99
         assert trainer.clip_epsilon == 0.2
+        assert trainer.device == 'cpu'
 
     def test_collect_trajectory(self):
         """Test trajectory collection."""
         model = TilerSliderNet(hidden_dim=64, num_recursive_steps=1)
-        trainer = PPOTrainer(model, learning_rate=3e-4)
+        trainer = PPOTrainer(model, learning_rate=3e-4, device='cpu')
 
         env = TilerSliderEnv(
             size=4,
@@ -340,7 +341,7 @@ class TestPPOTrainer:
     def test_collect_trajectories(self):
         """Test collecting multiple trajectories."""
         model = TilerSliderNet(hidden_dim=64, num_recursive_steps=1)
-        trainer = PPOTrainer(model, learning_rate=3e-4)
+        trainer = PPOTrainer(model, learning_rate=3e-4, device="cpu")
 
         env = TilerSliderEnv(
             size=3,
@@ -390,7 +391,7 @@ class TestPPOTrainer:
     def test_update_policy(self):
         """Test policy update step."""
         model = TilerSliderNet(hidden_dim=64, num_recursive_steps=1)
-        trainer = PPOTrainer(model, learning_rate=3e-4)
+        trainer = PPOTrainer(model, learning_rate=3e-4, device="cpu")
 
         env = TilerSliderEnv(
             size=3,
@@ -422,7 +423,7 @@ class TestPPOTrainer:
     def test_curriculum_schedule(self):
         """Test curriculum creation."""
         model = TilerSliderNet(hidden_dim=64, num_recursive_steps=1)
-        trainer = PPOTrainer(model)
+        trainer = PPOTrainer(model, device="cpu")
 
         envs = [
             TilerSliderEnv(size=3, initial_locations=[(0, 0)], target_locations=[(1, 1)]),
@@ -443,7 +444,7 @@ class TestPPOTrainer:
     def test_compute_rewards(self):
         """Test reward computation."""
         model = TilerSliderNet(hidden_dim=64, num_recursive_steps=1)
-        trainer = PPOTrainer(model)
+        trainer = PPOTrainer(model, device="cpu")
 
         env = TilerSliderEnv(
             size=3,
@@ -478,7 +479,7 @@ class TestTrainingIntegration:
     def test_short_training_run(self):
         """Test a short training run completes without errors."""
         model = TilerSliderNet(hidden_dim=64, num_recursive_steps=1)
-        trainer = PPOTrainer(model, learning_rate=1e-3)
+        trainer = PPOTrainer(model, learning_rate=1e-3, device="cpu")
 
         # Create simple environments
         envs = [
@@ -520,7 +521,7 @@ class TestTrainingIntegration:
     def test_training_improves_performance(self):
         """Test that training improves success rate."""
         model = TilerSliderNet(hidden_dim=128, num_recursive_steps=2)
-        trainer = PPOTrainer(model, learning_rate=1e-3)
+        trainer = PPOTrainer(model, learning_rate=1e-3, device="cpu")
 
         # Very simple environment
         env = TilerSliderEnv(

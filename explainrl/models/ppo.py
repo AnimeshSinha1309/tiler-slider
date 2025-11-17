@@ -20,6 +20,7 @@ from tqdm import tqdm
 
 from explainrl.environment import TilerSliderEnv, GameState, ImageLoader
 from explainrl.models.network import TilerSliderNet
+from explainrl.models.device_utils import get_device
 
 
 @dataclass
@@ -64,7 +65,7 @@ class PPOTrainer:
         value_coef: float = 0.5,
         entropy_coef: float = 0.01,
         max_grad_norm: float = 0.5,
-        device: str = 'cpu'
+        device: str = None
     ):
         """
         Initialize PPO trainer.
@@ -78,8 +79,12 @@ class PPOTrainer:
             value_coef: Coefficient for value loss
             entropy_coef: Coefficient for entropy bonus
             max_grad_norm: Maximum gradient norm for clipping
-            device: Device to train on
+            device: Device to train on (None = auto-detect, 'cpu', 'cuda', or 'mps')
         """
+        # Auto-detect device if not specified
+        if device is None:
+            device = get_device(prefer_gpu=True)
+
         self.model = model.to(device)
         self.device = device
         self.optimizer = optim.Adam(model.parameters(), lr=learning_rate)

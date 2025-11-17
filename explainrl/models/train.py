@@ -15,6 +15,7 @@ import torch
 
 from explainrl.environment import TilerSliderEnv, ImageLoader
 from explainrl.models import TilerSliderNet, PPOTrainer
+from explainrl.models.device_utils import get_device, print_device_info
 
 
 def load_puzzles(
@@ -125,17 +126,33 @@ def main():
                        help='Path to checkpoint to resume from')
 
     # Device
-    parser.add_argument('--device', type=str, default='cpu',
-                       choices=['cpu', 'cuda'],
-                       help='Device to train on')
+    parser.add_argument('--device', type=str, default='auto',
+                       choices=['auto', 'cpu', 'cuda', 'mps'],
+                       help='Device to train on (auto = detect best available)')
+    parser.add_argument('--no-gpu', action='store_true',
+                       help='Force CPU even if GPU is available')
 
     args = parser.parse_args()
+
+    # Print device information
+    print_device_info()
+    print()
 
     # Create save directory
     os.makedirs(args.save_dir, exist_ok=True)
 
+    # Determine device
+    if args.no_gpu:
+        device = 'cpu'
+        print("Forcing CPU as requested")
+    elif args.device == 'auto':
+        device = get_device(prefer_gpu=True)
+    else:
+        device = args.device
+        print(f"Using device: {device}")
+
     # Load puzzles
-    print(f"Loading {args.num_puzzles} puzzles...")
+    print(f"\nLoading {args.num_puzzles} puzzles...")
     puzzles = load_puzzles(
         num_puzzles=args.num_puzzles,
         multi_color=args.multi_color,
@@ -167,7 +184,7 @@ def main():
         clip_epsilon=args.clip_epsilon,
         value_coef=args.value_coef,
         entropy_coef=args.entropy_coef,
-        device=args.device
+        device=device
     )
 
     # Load checkpoint if specified

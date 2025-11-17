@@ -37,7 +37,7 @@ class StateEncoder(nn.Module):
         self.max_board_size = max_board_size
         self.max_tiles = max_tiles
 
-    def encode(self, state: GameState) -> torch.Tensor:
+    def encode(self, state: GameState, device: str = 'cpu') -> torch.Tensor:
         """
         Encode game state to tensor representation.
 
@@ -46,6 +46,7 @@ class StateEncoder(nn.Module):
 
         Args:
             state: GameState to encode
+            device: Device to create tensor on ('cpu', 'cuda', or 'mps')
 
         Returns:
             Tensor of shape (max_channels, max_board_size, max_board_size)
@@ -57,8 +58,8 @@ class StateEncoder(nn.Module):
         # Always use max channels for consistent network input
         max_channels = 1 + 3 * self.max_tiles
 
-        # Initialize tensor with zeros (unused channels stay zero)
-        encoded = torch.zeros((max_channels, self.max_board_size, self.max_board_size))
+        # Initialize tensor with zeros (unused channels stay zero) on the specified device
+        encoded = torch.zeros((max_channels, self.max_board_size, self.max_board_size), device=device)
 
         channel_idx = 0
 
@@ -267,8 +268,11 @@ class TilerSliderNet(nn.Module):
             - policy_logits: Logits over 4 actions (batch, 4)
             - embedding: Hidden representation (batch, hidden_dim) if requested
         """
-        # Encode state to tensor
-        encoded = self.encoder.encode(state).unsqueeze(0)  # Add batch dim
+        # Get device from model parameters
+        device = next(self.parameters()).device
+
+        # Encode state to tensor on the correct device
+        encoded = self.encoder.encode(state, device=device).unsqueeze(0)  # Add batch dim
 
         # Extract features with conv layers
         features = self.embedding(encoded)  # (batch, hidden_dim, H, W)
